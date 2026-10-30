@@ -4,23 +4,13 @@ Canal público oficial de downloads e atualizações do JARVIS.
 
 ## Download atual
 
-**Versão estável disponível para download:** `2.1.102`
+**Versão estável:** `2.1.186`
 
-- Download direto do instalador Windows: https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.102/JARVIS-Setup-2.1.102.exe
-- Página da versão: https://github.com/lukasvisualls/Jarvis-Releases/releases/tag/v2.1.102
-- Manifesto de atualização automática: https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.102/latest.yml
+- [Instalador Windows](https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.186/JARVIS-Setup-2.1.186.exe)
+- [Página da versão e arquivos](https://github.com/lukasvisualls/Jarvis-Releases/releases/tag/v2.1.186)
+- [Manifesto de atualização](https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.186/latest.yml)
+- [Notas da versão](releases/2.1.186.md)
 
-## O que entrou na 2.1.102
+A versão traz Lousa local nos cinco modos, resumo dos pedidos de voz e controles de vento/asas no avião REALISTA. O modo local funciona sem chave para os modelos incluídos. Pollinations e Gemini são serviços opcionais com condições e cotas próprias.
 
-- organização central do **JARVIS GAMES**;
-- estrutura `games/` preparada para os jogos atuais e futuros;
-- integração organizada do **Rhythia**;
-- preservação dos jogos já existentes no catálogo.
-
-Notas da versão: `releases/2.1.102.md`
-
-## Sincronização do projeto
-
-O repositório principal do JARVIS está com a versão `2.1.102` na `main` e o instalador correspondente já foi publicado neste canal.
-
-O código-fonte do aplicativo permanece no repositório principal; este repositório é destinado ao canal público de distribuição.
+O código-fonte permanece no repositório principal privado. Este repositório distribui instaladores, manifestos e notas públicas, sem dados de usuários ou chaves.
