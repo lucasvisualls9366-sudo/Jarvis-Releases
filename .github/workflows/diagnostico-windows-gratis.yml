@@ -1,0 +1,26 @@
+name: Diagnostico Windows gratis - JARVIS
+
+# Testa apenas a inicializacao de um runner Windows no repositorio PUBLICO.
+# Nao usa segredos, nao baixa codigo privado e nao publica instaladores.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/diagnostico-windows-gratis.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  confirmar:
+    runs-on: windows-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verificar Windows gratuito do GitHub
+        shell: pwsh
+        run: |
+          Write-Host "RUNNER_WINDOWS_PUBLICO_OK"
+          Write-Host "Repo: $env:GITHUB_REPOSITORY"
+          Write-Host "SO: $env:RUNNER_OS"
+          if ($env:RUNNER_OS -ne 'Windows') { throw "Runner nao e Windows" }
