@@ -28,6 +28,14 @@ jobs:
           Set-Content -LiteralPath (Join-Path $sourceProject '.env') -Value 'CHAVE_FICTICIA=SEM_SEGREDOS' -Encoding UTF8
           New-Item -ItemType Directory -Path (Join-Path $sourceProject 'node_modules') -Force | Out-Null
           Set-Content -LiteralPath (Join-Path $sourceProject 'node_modules\ignorar.txt') -Value 'nao copiar'
+          # Simular um clone Git real, com commits locais e SEM upstream.
+          # Era este caminho que falhava ao acessar a propriedade Texto.
+          git -C $sourceProject init | Out-Null
+          git -C $sourceProject config user.name 'JARVIS Teste'
+          git -C $sourceProject config user.email 'testes@example.invalid'
+          git -C $sourceProject add package.json .env
+          git -C $sourceProject commit -m 'Dados de teste do backup' | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'git init de teste falhou' }
           $env:APPDATA = $sourceAppdata
           $env:LOCALAPPDATA = $sourceLocal
           & subst.exe X: $root
@@ -47,7 +55,14 @@ jobs:
             if (Test-Path -LiteralPath (Join-Path $bk.FullName 'Codigo-local-Jarvis\node_modules\ignorar.txt')) {
               throw 'node_modules deveria ser ignorado'
             }
-            Write-Host 'JARVIS_BACKUP_RUNTIME_OK: copia, exclusoes e hashes validados.'
+            # Retomar backup concluido sem criar segunda pasta e com hashes consistentes.
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -RetomarPasta $bk.FullName -PastaProjeto $sourceProject
+            if ($LASTEXITCODE -ne 0) { throw "Retomada retornou codigo $LASTEXITCODE" }
+            $dados = Get-Content -LiteralPath (Join-Path $bk.FullName 'RELATORIO.txt') -Raw
+            if ($dados -notmatch 'Dados locais JARVIS encontrados: True') { throw 'O relatorio nao confirmou os dados locais' }
+            $pastas = @(Get-ChildItem 'X:\backups' -Directory | Where-Object { $_.Name -like 'Backup-JARVIS-*' })
+            if ($pastas.Count -ne 1) { throw 'Retomada criou um backup duplicado' }
+            Write-Host 'JARVIS_BACKUP_RUNTIME_OK: git local, copia, retomada, exclusoes e hashes validados.'
           }
           finally {
             & subst.exe X: /D | Out-Null
