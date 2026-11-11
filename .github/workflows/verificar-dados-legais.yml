@@ -1,0 +1,32 @@
+name: Diagnostico de segredos legais de publicacao
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/verificar-dados-legais.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  conferir-presenca:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
+      VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION }}
+      VITE_JARVIS_LEGAL_PROVIDER_ADDRESS: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_ADDRESS }}
+      VITE_JARVIS_LEGAL_CONTACT: ${{ secrets.VITE_JARVIS_LEGAL_CONTACT }}
+    steps:
+      - name: Conferir somente presenca dos quatro segredos sem exibir valores
+        shell: bash
+        run: |
+          set -euo pipefail
+          ausentes=()
+          for nome in VITE_JARVIS_LEGAL_PROVIDER_NAME VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION VITE_JARVIS_LEGAL_PROVIDER_ADDRESS VITE_JARVIS_LEGAL_CONTACT; do
+            if [[ -z "${!nome:-}" ]]; then ausentes+=("$nome"); fi
+          done
+          if [[ ${#ausentes[@]} -gt 0 ]]; then
+            printf "::warning::Faltam %s segredo(s) no Jarvis-Releases.\n" "${#ausentes[@]}"
+            printf 'SEGREDO_AUSENTE: %s\n' "${ausentes[@]}"
+            exit 1
+          fi
+          echo 'SEGREDOS_LEGAIS_OK: os quatro nomes tem valor nao vazio.'
