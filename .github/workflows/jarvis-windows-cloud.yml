@@ -3,6 +3,10 @@ name: JARVIS - Build Windows gratuito e atualizacoes
 # Runner publico padrao gratuito; codigo privado baixado apenas no runner temporario.
 # Segredos nunca devem ser usados em triggers pull_request/pull_request_target.
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-windows-cloud.yml
   schedule:
     - cron: '7 4,16 * * *'
   workflow_dispatch:
@@ -91,7 +95,7 @@ jobs:
     needs: plan
     if: ${{ needs.plan.outputs.should_build == 'true' }}
     # Windows gratuito do GitHub; nao usa o PC.
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 90
     env:
       VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
@@ -173,7 +177,7 @@ jobs:
     if: ${{ needs.plan.outputs.should_build == 'true' }}
     permissions:
       contents: write
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 90
     env:
       VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
