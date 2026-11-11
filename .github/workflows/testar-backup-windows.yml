@@ -52,3 +52,5 @@ jobs:
           finally {
             & subst.exe X: /D | Out-Null
           }
+
+# Reexecucao apos correcao da pasta sem historico Git.
