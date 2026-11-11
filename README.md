@@ -1,16 +1,28 @@
-# JARVIS Releases
+# JARVIS — downloads e atualizacoes oficiais
 
-Canal público oficial de downloads e atualizações do JARVIS.
+Este repositorio publico distribui instaladores e manifestos de atualizacao do JARVIS. **O codigo-fonte permanece privado** no repositorio `lukasvisualls-dev/Jarvis`.
 
-## Download atual
+## Baixar a versao oficial
 
-**Versão estável:** `2.1.186`
+- [Ultima versao do JARVIS (com instalador Windows)](https://github.com/lucasvisualls9366-sudo/Jarvis-Releases/releases/latest)
+- [Manifesto de autoatualizacao (`latest.yml`)](https://github.com/lucasvisualls9366-sudo/Jarvis-Releases/releases/latest/download/latest.yml)
+- [Historico de versoes](https://github.com/lucasvisualls9366-sudo/Jarvis-Releases/releases)
 
-- [Instalador Windows](https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.186/JARVIS-Setup-2.1.186.exe)
-- [Página da versão e arquivos](https://github.com/lukasvisualls/Jarvis-Releases/releases/tag/v2.1.186)
-- [Manifesto de atualização](https://github.com/lukasvisualls/Jarvis-Releases/releases/download/v2.1.186/latest.yml)
-- [Notas da versão](releases/2.1.186.md)
+## Compilacao Windows na nuvem — sem PC e sem gastos
 
-A versão traz Lousa local nos cinco modos, resumo dos pedidos de voz e controles de vento/asas no avião REALISTA. O modo local funciona sem chave para os modelos incluídos. Pollinations e Gemini são serviços opcionais com condições e cotas próprias.
+O workflow [JARVIS - Build Windows gratuito e atualizacoes](.github/workflows/jarvis-windows-cloud.yml) usa `windows-latest` **padrao em repositorio publico**, modalidade gratuita do GitHub Actions. O codigo e obtido do repositorio privado somente durante o build em um runner descartavel; o codigo-fonte e tokens nao sao colocados neste repositorio.
 
-O código-fonte permanece no repositório principal privado. Este repositório distribui instaladores, manifestos e notas públicas, sem dados de usuários ou chaves.
+**Segredos obrigatorios em Settings > Secrets and variables > Actions deste repositorio:**
+
+- `JARVIS_SOURCE_TOKEN`: token fine-grained da conta `lukasvisualls-dev`, escopo limitado a **Jarvis**, permissao **Contents: Read-only**.
+- Para **publicar** versoes novas, configurar tambem `VITE_JARVIS_LEGAL_PROVIDER_NAME`, `VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION`, `VITE_JARVIS_LEGAL_PROVIDER_ADDRESS` e `VITE_JARVIS_LEGAL_CONTACT` com os valores reais ja aprovados para o aplicativo. Publicacao sem esses valores e bloqueada.
+
+A publicacao neste proprio repositorio usa o `GITHUB_TOKEN` nativo do GitHub Actions com `contents: write`; **nao e necessario criar `JARVIS_RELEASES_TOKEN`** aqui.
+
+**Teste inicial seguro:** Actions > JARVIS - Build Windows gratuito e atualizacoes > Run workflow. Manter a opcao `publicar` desmarcada. O teste compila o instalador sem publicar, substituir releases ou armazenar artefatos publicos.
+
+**Atualizacao automatica:** a cada 12 horas, um job simples verifica a versao no codigo privado. Somente quando `package.json` tem uma versao superior a ultima release e existe `release-trigger/VERSAO.md`, roda validacoes, compila Windows e publica os tres arquivos apos verificacoes. Jamais substitui a release anterior ou publica a mesma versao. Ate os segredos serem configurados, o monitoramento nao compila nem publica.
+
+**Seguranca:** nao publicar tokens, codigo privado nem dados pessoais em commits ou logs. Nunca habilitar jobs que usem segredos em eventos de pull requests de terceiros. Logs das execucoes deste repositorio publico sao acessiveis a terceiros, mesmo quando o codigo-fonte utilizado e privado.
+
+**Importante:** ainda e necessario observar ao menos uma compilacao `Success` em Windows antes de desativar o runner antigo ou formatar o computador. Builds automaticos dependem de uma versao superior no codigo privado; uma mudanca comum sem aumento de versao nao publica release.
