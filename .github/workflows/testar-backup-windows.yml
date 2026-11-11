@@ -1,0 +1,54 @@
+name: Testar backup pre-formatacao com dados ficticios
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/testar-backup-windows.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  teste-isolado:
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - name: Baixar script privado e executar backup ficticio
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'JARVIS-backup-smoke'
+          $sourceAppdata = Join-Path $root 'roaming'
+          $sourceLocal = Join-Path $root 'local'
+          $sourceProject = Join-Path $root 'codigo-ficticio'
+          New-Item -ItemType Directory -Force -Path $root,$sourceAppdata,$sourceLocal,$sourceProject,(Join-Path $sourceAppdata 'JARVIS') | Out-Null
+          Set-Content -LiteralPath (Join-Path $sourceAppdata 'JARVIS\perfil-local.json') -Value '{"teste":true}' -Encoding UTF8
+          Set-Content -LiteralPath (Join-Path $sourceProject 'package.json') -Value '{"name":"jarvis-backup-teste"}' -Encoding UTF8
+          Set-Content -LiteralPath (Join-Path $sourceProject '.env') -Value 'CHAVE_FICTICIA=SEM_SEGREDOS' -Encoding UTF8
+          New-Item -ItemType Directory -Path (Join-Path $sourceProject 'node_modules') -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $sourceProject 'node_modules\ignorar.txt') -Value 'nao copiar'
+          $env:APPDATA = $sourceAppdata
+          $env:LOCALAPPDATA = $sourceLocal
+          & subst.exe X: $root
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao montar unidade de teste X:' }
+          try {
+            $b64 = (gh api repos/lukasvisualls-dev/Jarvis/contents/scripts/Preparar-Formatacao-JARVIS.ps1 --jq .content) -join ''
+            if ($LASTEXITCODE -ne 0) { throw 'Nao baixou script.' }
+            $script = Join-Path $root 'Preparar-Formatacao-JARVIS.ps1'
+            [IO.File]::WriteAllBytes($script, [Convert]::FromBase64String($b64))
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Destino 'X:\backups' -PastaProjeto $sourceProject
+            if ($LASTEXITCODE -ne 0) { throw "Script retornou codigo $LASTEXITCODE" }
+            $bk = Get-ChildItem 'X:\backups' -Directory | Where-Object { $_.Name -like 'Backup-JARVIS-*' } | Select-Object -First 1
+            if (-not $bk) { throw 'Pasta backup nao criada' }
+            foreach ($rel in @('AppData-Roaming-JARVIS\perfil-local.json','Codigo-local-Jarvis\package.json','Codigo-local-Jarvis\.env','MANIFESTO-SHA256.csv','RELATORIO.txt')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $bk.FullName $rel))) { throw "Faltou no backup: $rel" }
+            }
+            if (Test-Path -LiteralPath (Join-Path $bk.FullName 'Codigo-local-Jarvis\node_modules\ignorar.txt')) {
+              throw 'node_modules deveria ser ignorado'
+            }
+            Write-Host 'JARVIS_BACKUP_RUNTIME_OK: copia, exclusoes e hashes validados.'
+          }
+          finally {
+            & subst.exe X: /D | Out-Null
+          }
