@@ -24,3 +24,14 @@ jobs:
           Write-Host "Repo: $env:GITHUB_REPOSITORY"
           Write-Host "SO: $env:RUNNER_OS"
           if ($env:RUNNER_OS -ne 'Windows') { throw "Runner nao e Windows" }
+
+  confirmar-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verificar Linux gratuito do GitHub
+        shell: bash
+        run: |
+          echo "RUNNER_LINUX_PUBLICO_OK"
+          echo "Repo: $GITHUB_REPOSITORY"
+          test "$RUNNER_OS" = "Linux"
