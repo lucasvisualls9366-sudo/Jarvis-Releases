@@ -1,0 +1,35 @@
+name: Diagnostico seguro - token do codigo privado
+
+# Dispara ao instalar este teste ou manualmente. Nunca em PRs.
+# Sem compilacao, sem releases, sem imprimir o token ou dados do codigo privado.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verificar-token-privado.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testar-acesso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validar JARVIS_SOURCE_TOKEN sem expor credencial
+        shell: bash
+        env:
+          PRIVATE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$PRIVATE_TOKEN" ]]; then
+            echo "::error::JARVIS_SOURCE_TOKEN nao esta cadastrado em Jarvis-Releases."
+            exit 1
+          fi
+          if GH_TOKEN="$PRIVATE_TOKEN" gh api repos/lukasvisualls-dev/Jarvis/commits/main --jq '.sha' >/dev/null 2>&1; then
+            echo "TOKEN_PRIVADO_OK: acesso de leitura ao codigo JARVIS confirmado."
+          else
+            echo "::error::Token existe, mas nao conseguiu ler lukasvisualls-dev/Jarvis."
+            exit 1
+          fi
