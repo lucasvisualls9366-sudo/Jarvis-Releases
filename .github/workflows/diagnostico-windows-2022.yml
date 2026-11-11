@@ -1,0 +1,18 @@
+name: Diagnostico Windows 2022 gratuito
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/diagnostico-windows-2022.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  iniciar:
+    runs-on: windows-2022
+    timeout-minutes: 4
+    steps:
+      - name: Testar inicializacao do runner padrao Windows 2022
+        shell: pwsh
+        run: |
+          Write-Host "WINDOWS_2022_INICIADO"
+          if ($env:RUNNER_OS -ne 'Windows') { throw 'Runner incorreto' }
