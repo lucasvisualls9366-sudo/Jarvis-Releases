@@ -40,7 +40,9 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $tmp = Join-Path $env:RUNNER_TEMP 'Preparar-Formatacao-JARVIS.ps1'
-          $base64 = (GH_TOKEN="$env:PRIVATE_TOKEN" gh api repos/lukasvisualls-dev/Jarvis/contents/scripts/Preparar-Formatacao-JARVIS.ps1 --jq .content) -join ''
+          $env:GH_TOKEN = $env:PRIVATE_TOKEN
+          $base64 = (gh api repos/lukasvisualls-dev/Jarvis/contents/scripts/Preparar-Formatacao-JARVIS.ps1 --jq .content) -join ''
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao baixar o script privado.' }
           [IO.File]::WriteAllBytes($tmp, [Convert]::FromBase64String($base64))
           $tokens = $null
           $parseErrors = $null
