@@ -44,4 +44,4 @@ jobs:
       - name: Conferir compilação web
         run: npm run build
       - name: Registrar resultado
-        run: echo "JARVIS_NAVEGADOR_247_TESTES_OK"
+        run: echo "JARVIS_NAVEGADOR_247_TESTES_OK - voz, volume, janela, Download YT e build"
