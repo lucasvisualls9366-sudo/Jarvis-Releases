@@ -1,0 +1,33 @@
+name: JARVIS 2.1.248 - disparar publicacao oficial verificada
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-publicar-248.yml
+permissions:
+  contents: read
+  actions: write
+jobs:
+  solicitar-publicacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checar versao publica e iniciar workflow oficial
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LATEST=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          if [[ "$LATEST" == "v2.1.248" ]]; then
+            echo "JARVIS 2.1.248 ja esta publicado. Nenhuma nova acao necessaria."
+            exit 0
+          fi
+          if [[ "$LATEST" != "v2.1.247" ]]; then
+            echo "::error::Versao publica inesperada: $LATEST. Publicacao bloqueada."
+            exit 1
+          fi
+          # O workflow oficial confirma no codigo privado que a versao é 2.1.248,
+          # refaz todos os testes no Windows e confere exe/blockmap/latest.yml.
+          gh workflow run jarvis-windows-cloud.yml --repo "$GITHUB_REPOSITORY" --ref main -f publicar=true
+          echo "Publicacao oficial solicitada; aguardando verificacoes da esteira Windows."
