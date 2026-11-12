@@ -1,0 +1,35 @@
+name: JARVIS Conversor Black Neon - validar correcao final sem publicar
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-conversor-final-smoke.yml
+permissions:
+  contents: read
+jobs:
+  validar-final:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/conversor-voz-previa-black-neon-20261112
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Conferir voz, fechamento, conversor e tipagem da versao final
+        run: |
+          npx tsc -p tsconfig.app.json
+          npx tsx scripts/conferir-conversor-voz.ts
+          node --test electron/dragshiftWorkspace.test.js
+          node --check electron/dragshiftWorkspace.js
+      - name: Nao criar release, apenas validar
+        shell: pwsh
+        run: |
+          $v=(node -p "require('./package.json').version").Trim()
+          if ($v -ne '2.1.248') { throw "Versao alterada indevidamente: $v" }
