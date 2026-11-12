@@ -1,0 +1,65 @@
+name: JARVIS navegador 2.1.247 - instalador de previa
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/jarvis-browser-247-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar-e-gerar:
+    runs-on: windows-2022
+    timeout-minutes: 100
+    steps:
+      - name: Conferir token privado
+        shell: pwsh
+        env:
+          PRIVATE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PRIVATE_TOKEN)) {
+            throw 'Configure JARVIS_SOURCE_TOKEN.'
+          }
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: feat/navegador-inteligente-download-yt-247
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar novo navegador inteligente 247
+        run: |
+          npx tsx scripts/conferir-navegador-inteligente-247.ts
+      - name: Regressao de navegador e voz
+        run: |
+          npm run test:youtube
+          npm run test:navegador-interno
+          node scripts/conferir-navegador-download-225.mjs
+          node --check electron/jarvisBrowser.js
+          node --check electron/browserChromeRenderer.js
+      - name: Preparar HEIC
+        shell: pwsh
+        run: ./scripts/install-heic-codec.ps1
+      - name: Verificar projeto
+        run: npx tsc -p tsconfig.app.json
+      - name: Gerar aplicacao
+        run: npm run build
+      - name: Gerar instalador de previa sem publicar Release
+        run: npx electron-builder --win --publish never
+      - name: Validar pacote final
+        shell: pwsh
+        run: |
+          $exe = 'dist-desktop/JARVIS-Setup-2.1.247.exe'
+          if (-not (Test-Path -LiteralPath $exe)) { throw 'Instalador 2.1.247 nao foi gerado.' }
+          if ((Get-Item $exe).Length -lt 50000000) { throw 'Instalador inesperadamente pequeno.' }
+          node scripts/conferir-runtime-empacotado.cjs
+      - name: Guardar instalador como artefato de teste, nao release oficial
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Navegador-2.1.247-Preview-Windows
+          path: dist-desktop/JARVIS-Setup-2.1.247.exe
+          if-no-files-found: error
+          retention-days: 7
