@@ -39,6 +39,8 @@ jobs:
         run: |
           npm run test:youtube
           npm run test:navegador-interno
+      - name: Testar nova integração de voz e Download YT
+        run: npx tsx scripts/conferir-navegador-inteligente-247.ts
       - name: Conferir compilação web
         run: npm run build
       - name: Registrar resultado
