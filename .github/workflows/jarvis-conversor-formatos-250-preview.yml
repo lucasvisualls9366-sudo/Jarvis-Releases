@@ -1,4 +1,5 @@
 name: JARVIS 2.1.250 - DragShift upstream e 9 formatos (preflight)
+# Revalidar apos novo teste de JPG para todos os destinos e comparacao do upstream.
 on:
   push:
     branches: [main]
