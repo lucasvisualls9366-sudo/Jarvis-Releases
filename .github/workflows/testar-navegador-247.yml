@@ -43,5 +43,7 @@ jobs:
         run: npx tsx scripts/conferir-navegador-inteligente-247.ts
       - name: Conferir compilação web
         run: npm run build
+      - name: Validar janela Electron real no Windows
+        run: node scripts/conferir-navegador-runtime-247.mjs
       - name: Registrar resultado
         run: echo "JARVIS_NAVEGADOR_247_TESTES_OK - voz, volume, janela, Download YT e build"
