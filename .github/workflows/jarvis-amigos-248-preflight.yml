@@ -1,0 +1,81 @@
+name: JARVIS 2.1.248 - Amigos verificacao e instalador de previa
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-amigos-248-preflight.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar-248:
+    runs-on: windows-2022
+    timeout-minutes: 100
+    steps:
+      - name: Verificar acesso privado
+        shell: pwsh
+        env:
+          PRIVATE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PRIVATE_TOKEN)) { throw 'JARVIS_SOURCE_TOKEN ausente.' }
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/amigos-chamadas-chat-supabase-20261112
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Verificar versao e sintaxe Electron
+        shell: pwsh
+        run: |
+          $version = (node -p "require('./package.json').version").Trim()
+          if ($version -ne '2.1.248') { throw "Versao incorreta: $version" }
+          node --check electron/main.js
+      - name: Tipagem e testes da aba Amigos
+        run: |
+          npx tsc -p tsconfig.app.json
+          node scripts/conferir-amigos.mjs
+          node scripts/conferir-amigos-chat-20261112.mjs
+          npx tsx scripts/conferir-amigos-datas.ts
+          npx tsx scripts/conferir-qualidade-chamada.ts
+          node scripts/conferir-documentos-realtime.mjs
+          node scripts/conferir-grupo-reentrada.mjs
+      - name: Validar Supabase e autenticacao
+        run: |
+          node scripts/conferir-supabase-empacotamento.cjs
+          node scripts/conferir-auth-supabase.mjs
+          node scripts/conferir-auth-supabase-sdk.mjs
+      - name: Preparar HEIC
+        shell: pwsh
+        run: ./scripts/install-heic-codec.ps1
+      - name: Compilar aplicativo
+        run: npm run build
+      - name: Testar chamadas em navegador de duas contas simuladas
+        shell: pwsh
+        run: |
+          npx playwright install chromium
+          node scripts/conferir-amigos-fluxo.mjs
+      - name: Gerar instalador de teste (sem publicar)
+        run: npx electron-builder --win --publish never
+      - name: Conferir instalador
+        shell: pwsh
+        run: |
+          $exe='dist-desktop/JARVIS-Setup-2.1.248.exe'
+          if (-not (Test-Path -LiteralPath $exe)) { throw 'Instalador 2.1.248 nao gerado.' }
+          if ((Get-Item -LiteralPath $exe).Length -lt 50000000) { throw 'Instalador incompleto.' }
+          node scripts/conferir-runtime-empacotado.cjs
+          $yml=Get-Content 'dist-desktop/latest.yml' -Raw
+          if ($yml -notmatch 'version:\\s*2\\.1\\.248') { throw 'Metadados do atualizador incorretos.' }
+      - name: Guardar previa para verificacao
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-2.1.248-Amigos-Preview
+          path: |
+            dist-desktop/JARVIS-Setup-2.1.248.exe
+            dist-desktop/latest.yml
+          retention-days: 5
+          if-no-files-found: error
