@@ -1,4 +1,5 @@
 name: JARVIS 2.1.248 - Amigos verificacao e instalador de previa
+# Reteste do fluxo E2E alinhado ao estado WebRTC Em chamada.
 on:
   push:
     branches: [main]
