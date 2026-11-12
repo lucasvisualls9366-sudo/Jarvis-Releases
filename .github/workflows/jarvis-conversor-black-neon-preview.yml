@@ -1,4 +1,5 @@
 name: JARVIS - Conversor Black Neon - previa sem publicar
+# Segunda validação: tipagem da consulta Supabase corrigida na branch privada.
 on:
   push:
     branches: [main]
