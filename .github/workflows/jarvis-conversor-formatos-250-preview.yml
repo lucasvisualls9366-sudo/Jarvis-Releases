@@ -1,0 +1,51 @@
+name: JARVIS 2.1.250 - conferir 9 formatos e voz sem publicar
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-conversor-formatos-250-preview.yml
+permissions:
+  contents: read
+jobs:
+  validar-conversor:
+    runs-on: windows-2022
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/conversor-3d-voz-destino-black-neon-250
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Conferir tipos e comandos de voz inclusive fechar 3D
+        run: |
+          npx tsc -p tsconfig.app.json
+          npx tsx scripts/conferir-conversor-voz.ts
+      - name: Verificar seguranca de arquivos
+        run: node scripts/conferir-conversor-autorizacao.mjs
+      - name: Testes unitarios de formato, historico e preservacao
+        run: node --test electron/dragshiftWorkspace.test.js
+      - name: Instalar codec HEIC
+        shell: pwsh
+        run: ./scripts/install-heic-codec.ps1
+      - name: Testar JPG WEBP HEIC BMP AVIF TIFF GIF ICO PDF e JPG para WEBP para PDF
+        run: node --test electron/dragshiftFormats.test.js
+      - name: Compilar interface e motor
+        run: |
+          npm run build
+          node --check electron/dragshiftWorkspace.js
+      - name: Confirmar que esta validacao nao publica
+        shell: pwsh
+        run: |
+          $v=(node -p "require('./package.json').version").Trim()
+          if ($v -ne '2.1.249') { throw "Versao oficial alterada indevidamente: $v" }
+          $ui=Get-Content 'src/components/FloatingConverterAssistant.tsx' -Raw
+          if ($ui -match 'aria-label="Fechar ícone do conversor"') { throw 'Botao X externo ainda presente' }
+          if ($ui -notmatch 'data-converter-floating-trigger') { throw 'Icone 3D ausente' }
+          $app=Get-Content 'src/App.tsx' -Raw
+          if ($app -notmatch 'fecharConversorConfirmado\(cleanText\)') { throw 'Live nao roteia fechamento local' }
