@@ -70,7 +70,7 @@ jobs:
           if ((Get-Item -LiteralPath $exe).Length -lt 50000000) { throw 'Instalador incompleto.' }
           node scripts/conferir-runtime-empacotado.cjs
           $yml=Get-Content 'dist-desktop/latest.yml' -Raw
-          if ($yml -notmatch 'version:\\s*2\\.1\\.248') { throw 'Metadados do atualizador incorretos.' }
+          if ($yml -notmatch 'version:\s*2\.1\.248') { throw 'Metadados do atualizador incorretos.' }
       - name: Guardar previa para verificacao
         uses: actions/upload-artifact@v4
         with:
