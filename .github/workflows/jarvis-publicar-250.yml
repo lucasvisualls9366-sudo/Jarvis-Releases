@@ -1,0 +1,32 @@
+name: JARVIS 2.1.250 - solicitar publicacao oficial validada
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-publicar-250.yml
+permissions:
+  contents: read
+  actions: write
+jobs:
+  solicitar-publicacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirmar versao publica e disparar release Windows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="$GITHUB_REPOSITORY"
+          LATEST=$(gh api "repos/$REPO/releases/latest" --jq .tag_name)
+          if [[ "$LATEST" == "v2.1.250" ]]; then
+            echo "::notice::JARVIS 2.1.250 ja publicado. Evitando duplicacao."
+            exit 0
+          fi
+          if [[ "$LATEST" != "v2.1.249" ]]; then
+            echo "::error::Versao publica inesperada: $LATEST. Publicacao bloqueada."
+            exit 1
+          fi
+          gh workflow run jarvis-windows-cloud.yml --repo "$REPO" --ref main -f publicar=true
+          echo "::notice::JARVIS 2.1.250 solicitado; publica somente apos compilacao, testes e verificacao dos arquivos."
