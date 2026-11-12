@@ -14,7 +14,7 @@ jobs:
       - name: Conferir token privado
         shell: pwsh
         env:
-          PRIVATE_TOKEN: \${{ secrets.JARVIS_SOURCE_TOKEN }}
+          PRIVATE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:PRIVATE_TOKEN)) {
             throw 'Configure JARVIS_SOURCE_TOKEN.'
@@ -23,7 +23,7 @@ jobs:
         with:
           repository: lukasvisualls-dev/Jarvis
           ref: 639484be44d222b100318c877c99355cda910648
-          token: \${{ secrets.JARVIS_SOURCE_TOKEN }}
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
