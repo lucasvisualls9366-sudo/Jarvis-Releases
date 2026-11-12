@@ -1,4 +1,4 @@
-name: JARVIS 2.1.250 - conferir 9 formatos e voz sem publicar
+name: JARVIS 2.1.250 - DragShift upstream e 9 formatos (preflight)
 on:
   push:
     branches: [main]
@@ -22,6 +22,12 @@ jobs:
           node-version: 22
       - name: Instalar dependencias
         run: npm ci
+      - name: Contrato DragShift upstream e interfaces
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'docs/DRAGSHIFT-UPSTREAM-FORMATOS.md')) { throw 'Comparacao com DragShift original ausente.' }
+          $doc=Get-Content 'docs/DRAGSHIFT-UPSTREAM-FORMATOS.md' -Raw
+          if ($doc -notmatch 'llamaboi55/DragShift' -or $doc -notmatch 'AVIF' -or $doc -notmatch 'PDF') { throw 'Contrato de formatos incompleto.' }
       - name: Conferir tipos e comandos de voz inclusive fechar 3D
         run: |
           npx tsc -p tsconfig.app.json
@@ -39,6 +45,10 @@ jobs:
         run: |
           npm run build
           node --check electron/dragshiftWorkspace.js
+      - name: Gerar instalador Windows de previa sem release
+        run: |
+          npx electron-builder --win --publish never
+          node scripts/conferir-runtime-empacotado.cjs
       - name: Confirmar que esta validacao nao publica
         shell: pwsh
         run: |
@@ -49,3 +59,10 @@ jobs:
           if ($ui -notmatch 'data-converter-floating-trigger') { throw 'Icone 3D ausente' }
           $app=Get-Content 'src/App.tsx' -Raw
           if ($app -notmatch 'fecharConversorConfirmado\(cleanText\)') { throw 'Live nao roteia fechamento local' }
+          if (-not (Test-Path 'dist-desktop/JARVIS-Setup-2.1.249.exe')) { throw 'Instalador de previa nao gerado' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-DragShift-Upstream-9-Formatos-Preview-SEM-RELEASE
+          path: dist-desktop/JARVIS-Setup-2.1.249.exe
+          if-no-files-found: error
+          retention-days: 5
