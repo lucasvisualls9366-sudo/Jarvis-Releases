@@ -1,0 +1,45 @@
+name: JARVIS navegador 247 - validação sem publicar
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/testar-navegador-247.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  navegador:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Conferir credencial do código privado
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN"
+          gh api repos/lukasvisualls-dev/Jarvis/branches/feat/navegador-inteligente-download-yt-247 --jq '.commit.sha' > /dev/null
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: feat/navegador-inteligente-download-yt-247
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Conferir sintaxe JavaScript Electron
+        run: |
+          node --check electron/jarvisBrowser.js
+          node --check electron/browserChromeRenderer.js
+          node --check electron/main.js
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Testar YouTube e navegador sem baixar mídia real
+        run: |
+          npm run test:youtube
+          npm run test:navegador-interno
+      - name: Conferir compilação web
+        run: npm run build
+      - name: Registrar resultado
+        run: echo "JARVIS_NAVEGADOR_247_TESTES_OK"
