@@ -1,0 +1,73 @@
+name: JARVIS - Conversor Black Neon - previa sem publicar
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-conversor-black-neon-preview.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar-conversor:
+    runs-on: windows-2022
+    timeout-minutes: 85
+    steps:
+      - name: Verificar token privado
+        shell: pwsh
+        env:
+          PRIVATE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PRIVATE_TOKEN)) { throw 'JARVIS_SOURCE_TOKEN ausente.' }
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/conversor-voz-previa-black-neon-20261112
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Tipagem
+        run: npx tsc -p tsconfig.app.json
+      - name: Comandos de voz, abertura e fechamento
+        run: npx tsx scripts/conferir-conversor-voz.ts
+      - name: Preservar autorizacao de arquivos
+        run: node scripts/conferir-conversor-autorizacao.mjs
+      - name: Testes unitarios do conversor
+        run: node --test electron/dragshiftWorkspace.test.js
+      - name: Preparar HEIC
+        shell: pwsh
+        run: ./scripts/install-heic-codec.ps1
+      - name: Testar todos formatos reais, PDF, ICO, GIF, HEIC, sem alterar originais
+        run: node --test electron/dragshiftFormats.test.js
+      - name: Build do JARVIS
+        run: npm run build
+      - name: Verificar novo SVG e tema
+        shell: pwsh
+        run: |
+          $icon='public/icons/jarvis-converter-black-neon.svg'
+          if (-not (Test-Path $icon)) { throw 'Ícone Black Neon ausente' }
+          $svg=Get-Content $icon -Raw
+          if ($svg -notmatch 'JARVIS' -or $svg -notmatch '<svg') { throw 'SVG de ícone incompleto' }
+          $app=Get-Content 'src/components/FloatingConverterAssistant.tsx' -Raw
+          if ($app -notmatch 'Fechar ícone do conversor' -or $app -notmatch 'Prévia antes de salvar') { throw 'Faltou implementar abertura/fechamento ou prévia' }
+          node --check electron/dragshiftWorkspace.js
+      - name: Instalar e conferir pacote Windows de previa
+        run: |
+          npx electron-builder --win --publish never
+          node scripts/conferir-runtime-empacotado.cjs
+      - name: Conferir que nao publicou release
+        shell: pwsh
+        run: |
+          $version=(node -p "require('./package.json').version").Trim()
+          if ($version -ne '2.1.248') { throw "Versão estável foi alterada indevidamente: $version" }
+          if (-not (Test-Path 'dist-desktop/JARVIS-Setup-2.1.248.exe')) { throw 'Instalador de previa ausente' }
+      - name: Guardar instalador somente como previa
+        uses: actions/upload-artifact@v4
+        with:
+          name: Conversor-JARVIS-Black-Neon-Preview-Sem-Release
+          path: dist-desktop/JARVIS-Setup-2.1.248.exe
+          retention-days: 5
+          if-no-files-found: error
