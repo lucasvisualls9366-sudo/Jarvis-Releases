@@ -1,0 +1,44 @@
+name: JARVIS - Testar Download YT por voz PR 187 (sem publicar)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/testar-download-yt-voz-pr187.yml
+permissions:
+  contents: read
+jobs:
+  verificar:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - name: Verificar acesso de leitura ao codigo privado
+        shell: pwsh
+        env:
+          SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SOURCE_TOKEN)) { throw 'Falta JARVIS_SOURCE_TOKEN para validar o codigo privado.' }
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 2572903f696c970494abfb4cf1203f3256b4858b
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias para testes
+        run: npm ci
+      - name: Testar intents, captura de URL, modo manual e arquivo final
+        run: npm run test:youtube-voz
+      - name: Validar navegador interno e downloads existentes
+        run: |
+          npm run test:navegador-interno
+          npm run test:youtube
+      - name: Verificar tipos do aplicativo
+        run: npx tsc -p tsconfig.app.json
+      - name: Compilar a interface e servidor sem gerar release
+        run: npm run build
+      - name: Confirmar ausencia de publicacao
+        shell: pwsh
+        run: |
+          Write-Host 'Build de teste concluido. Nenhuma tag/release foi criada.'
