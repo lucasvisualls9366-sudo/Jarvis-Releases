@@ -118,6 +118,11 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - name: Validar latencia, fila e motores de voz antes de publicar
+        run: |
+          npm run test:voz-latencia
+          npm run test:elevenlabs
+          npm run test:voz-natural
       - name: Preparar HEIC para testes Windows
         shell: powershell
         run: ./scripts/install-heic-codec.ps1
