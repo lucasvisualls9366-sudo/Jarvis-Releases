@@ -1,0 +1,44 @@
+name: JARVIS 2.1.251 - solicitar publicacao oficial validada
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-publicar-251.yml
+permissions:
+  contents: read
+  actions: write
+jobs:
+  solicitar-publicacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verificar versao e solicitar build Windows oficial
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO="$GITHUB_REPOSITORY"
+          LATEST=$(gh api "repos/$REPO/releases/latest" --jq .tag_name)
+          if [[ "$LATEST" == "v2.1.251" ]]; then
+            echo "::notice::JARVIS 2.1.251 ja publicado; evitando duplicacao."
+            exit 0
+          fi
+          if [[ "$LATEST" != "v2.1.250" ]]; then
+            echo "::error::Versao publica inesperada: $LATEST. Publicacao bloqueada."
+            exit 1
+          fi
+          if [[ -z "$SOURCE_TOKEN" ]]; then
+            echo "::error::Falta o segredo JARVIS_SOURCE_TOKEN; publicacao bloqueada."
+            exit 1
+          fi
+          SOURCE_REPO="lukasvisualls-dev/Jarvis"
+          VERSION=$(GH_TOKEN="$SOURCE_TOKEN" gh api "repos/$SOURCE_REPO/contents/package.json?ref=main" --jq .content | base64 --decode | jq -r .version)
+          if [[ "$VERSION" != "2.1.251" ]]; then
+            echo "::error::Fonte esta em $VERSION; esperado 2.1.251."
+            exit 1
+          fi
+          GH_TOKEN="$SOURCE_TOKEN" gh api "repos/$SOURCE_REPO/contents/release-trigger/2.1.251.md?ref=main" >/dev/null
+          gh workflow run jarvis-windows-cloud.yml --repo "$REPO" --ref main -f publicar=true
+          echo "::notice::JARVIS 2.1.251 solicitado; publicacao somente apos testes, build e verificacao dos arquivos."
