@@ -1,0 +1,66 @@
+name: JARVIS - Excluir 10 releases antigas e manter 5 (autorizado)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/limpar-releases-antigas-2026-11-13.yml
+
+permissions:
+  contents: write
+
+jobs:
+  limpar-releases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Conferir versoes que serao mantidas e excluidas
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          if [[ "$repo" != "lucasvisualls9366-sudo/Jarvis-Releases" ]]; then
+            echo "::error::Repositorio inesperado. Nao excluir."
+            exit 1
+          fi
+          keep=(v2.1.251 v2.1.250 v2.1.249 v2.1.248 v2.1.247)
+          remove=(v2.1.246 v2.1.242 v2.1.241 v2.1.240 v2.1.239 v2.1.238 v2.1.237 v2.1.236 v2.1.235 v2.1.234)
+
+          latest="$(gh api "repos/$repo/releases/latest" --jq '.tag_name')"
+          if [[ "$latest" != "v2.1.251" ]]; then
+            echo "::error::A ultima release mudou para $latest; abortando para preservar as cinco mais recentes."
+            exit 1
+          fi
+
+          mapfile -t tags < <(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
+          if [[ "${#tags[@]}" -ne 15 ]]; then
+            echo "::error::Esperadas 15 releases, encontradas ${#tags[@]}; nao excluir."
+            exit 1
+          fi
+          expected=("${keep[@]}" "${remove[@]}")
+          for i in "${!expected[@]}"; do
+            if [[ "${tags[$i]}" != "${expected[$i]}" ]]; then
+              echo "::error::Lista divergiu no indice $i (${tags[$i]} != ${expected[$i]}). Nao excluir."
+              exit 1
+            fi
+          done
+
+          echo "Versoes preservadas: ${keep[*]}"
+          for tag in "${remove[@]}"; do
+            echo "Excluindo release e tag: $tag"
+            gh release delete "$tag" --repo "$repo" --cleanup-tag --yes
+          done
+
+          mapfile -t after < <(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
+          if [[ "${#after[@]}" -ne 5 ]]; then
+            echo "::error::Exclusao incompleta: existem ${#after[@]} releases."
+            exit 1
+          fi
+          for i in "${!keep[@]}"; do
+            if [[ "${after[$i]}" != "${keep[$i]}" ]]; then
+              echo "::error::Uma release preservada foi alterada: ${after[$i]}."
+              exit 1
+            fi
+          done
+          echo "OK: somente as cinco releases mais recentes continuam publicadas."
