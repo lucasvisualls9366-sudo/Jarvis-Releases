@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: lukasvisualls-dev/Jarvis
-          ref: 2572903f696c970494abfb4cf1203f3256b4858b
+          ref: 67199a453e531af6bee4dd6ffd347b6b28c10953
           token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-node@v4
