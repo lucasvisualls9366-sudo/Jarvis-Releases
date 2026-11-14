@@ -1,0 +1,38 @@
+name: Validar JARVIS 2.1.258 - holograma realista e voz
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-holograma-258.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  validar-holograma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar codigo privado do PR 193
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: d52b07fbfa81667fed1ad839ed273caf329e8ef6
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Conferir regressao e novo holograma
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.258"
+          npm run test:holograma-256
+          npm run test:holograma-257
+          npm run test:holograma-258
+      - name: Compilar aplicativo React
+        run: npm run build
+      - name: Checar TypeScript
+        run: npx tsc -p tsconfig.app.json
