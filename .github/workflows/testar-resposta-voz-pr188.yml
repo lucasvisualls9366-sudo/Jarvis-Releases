@@ -1,0 +1,46 @@
+name: JARVIS - Validar saudacao e latencia PR 188 (sem publicar)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/testar-resposta-voz-pr188.yml
+
+permissions:
+  contents: read
+
+jobs:
+  voice-response-windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - name: Confirmar acesso ao codigo privado
+        shell: pwsh
+        env:
+          SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SOURCE_TOKEN)) { throw 'Falta JARVIS_SOURCE_TOKEN' }
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: d8338ae36ff5d09bfd19c849c33a7478da8744fa
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Verificar tempos de saudacao e marcadores de audio
+        run: npm run test:resposta-voz
+      - name: Preservar processamento continuo de voz
+        run: |
+          npm run test:voz-latencia
+          npm run test:elevenlabs
+          npm run test:voz-natural
+      - name: Checar compilacao TypeScript
+        run: npx tsc -p tsconfig.app.json
+      - name: Construir JARVIS sem publicar instalador
+        run: npm run build
+      - name: Confirmar teste sem publicacao
+        shell: pwsh
+        run: Write-Host 'Validação concluída, sem alterar releases do JARVIS.'
