@@ -1,0 +1,37 @@
+name: Validar JARVIS 2.1.257 - correção holograma voz
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-holograma-257.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  validar-holograma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar commit do PR 192 no codigo privado
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fcdb877f9030eb32db0f9cd9c0ce2dd503a4670b
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar holograma 2.1.256 e correção 2.1.257
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.257"
+          npm run test:holograma-256
+          npm run test:holograma-257
+      - name: Compilar sistema
+        run: npm run build
+      - name: Verificar TypeScript
+        run: npx tsc -p tsconfig.app.json
