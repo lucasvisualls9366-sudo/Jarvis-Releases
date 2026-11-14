@@ -1,0 +1,48 @@
+name: Validar JARVIS 2.1.259 - modelos 3D e roteamento
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-holograma-259.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  validar-holograma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar commit privado do PR 194
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 4876f4e768909fcc05bd89eee112f2f04a932cf6
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias com tolerancia a rede instavel
+        shell: bash
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          for attempt in 1 2 3 4; do
+            npm ci --fetch-retries=4 --fetch-retry-factor=2 --fetch-retry-mintimeout=2000 && exit 0
+            echo "npm ci falhou na tentativa $attempt"
+            sleep 5
+          done
+          exit 1
+      - name: Conferir roteamento exato, 3D, áudio, dados e regressões
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.259"
+          npm run test:holograma-256
+          npm run test:holograma-257
+          npm run test:holograma-258
+          npm run test:holograma-259
+      - name: Compilar JARVIS
+        run: npm run build
+      - name: Verificar tipagem
+        run: npx tsc -p tsconfig.app.json
