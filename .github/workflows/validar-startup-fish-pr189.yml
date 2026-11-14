@@ -1,0 +1,44 @@
+name: JARVIS - Validar inicializacao e Fish Audio PR 189
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-startup-fish-pr189.yml
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: windows-2022
+    timeout-minutes: 55
+    steps:
+      - name: Baixar codigo testado sem persistir credenciais
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 61db6ad1c422e54ae882b1ea76e2eae2674efe33
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Testar inicializacao, relogio e Fish Audio
+        run: npm run test:inicio-rapido
+      - name: Garantir compatibilidade de voz e downloads
+        run: |
+          npm run test:voz-latencia
+          npm run test:resposta-voz
+          npm run test:elevenlabs
+          npm run test:voz-natural
+          npm run test:youtube-voz
+          npm run test:tela-inicial
+      - name: Validar tipagem TypeScript
+        run: npx tsc -p tsconfig.app.json
+      - name: Compilar frontend e servidor Windows
+        run: npm run build
+      - name: Validar API Fish Audio com mock sem credenciais reais
+        run: node scripts/conferir-fish-principal.mjs
+      - name: Confirmar que nao houve publicacao
+        shell: pwsh
+        run: Write-Host 'Todos testes no Windows concluídos; este job não publica release nem instalador.'
