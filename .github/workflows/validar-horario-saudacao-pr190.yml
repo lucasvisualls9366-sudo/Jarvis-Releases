@@ -1,0 +1,31 @@
+name: JARVIS - Testar saudacao e horas por voz PR 190
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-horario-saudacao-pr190.yml
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 693ce09f038bbba22bb173398edbc1802645ef20
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Testar horarios, saudacoes, apps e Fish
+        run: |
+          npm run test:inicio-rapido
+          npm run test:voz-latencia
+      - name: Verificar TypeScript
+        run: npx tsc -p tsconfig.app.json
+      - name: Compilar sem publicar instalador
+        run: npm run build
