@@ -1,0 +1,36 @@
+name: JARVIS - Validar handoff e resposta de voz PR 188
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-voz-final-pr188.yml
+permissions:
+  contents: read
+jobs:
+  testar-voz:
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: e56556fa849054577610020a3adb166e9385e44b
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Testes de saudacao, texto e audio
+        run: |
+          npm run test:resposta-voz
+          npm run test:voz-latencia
+          npm run test:elevenlabs
+          npm run test:voz-natural
+      - name: Tipagem TypeScript
+        run: npx tsc -p tsconfig.app.json
+      - name: Build sem publicacao
+        run: npm run build
+      - name: Resultado
+        shell: pwsh
+        run: Write-Host 'Validado sem gerar release do JARVIS.'
