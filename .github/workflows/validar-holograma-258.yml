@@ -24,8 +24,17 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Instalar dependencias
-        run: npm ci
+      - name: Instalar dependencias com tolerancia a rede instavel
+        shell: bash
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          for attempt in 1 2 3 4; do
+            npm ci --fetch-retries=4 --fetch-retry-factor=2 --fetch-retry-mintimeout=2000 && exit 0
+            echo "npm ci falhou na tentativa $attempt; repetindo..."
+            sleep 5
+          done
+          exit 1
       - name: Conferir regressao e novo holograma
         run: |
           test "$(node -p "require('./package.json').version")" = "2.1.258"
