@@ -1,0 +1,38 @@
+name: Validar JARVIS 2.1.256 - holograma do PC
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-holograma-256.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-holograma:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Conferir acesso ao codigo privado e baixar somente commit do PR 191
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 176b9fbe0fd2bb08a08276cdefaf6f7ce55e4824
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Conferir versao e validar comandos de holograma
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.256"
+          npm run test:holograma-256
+      - name: Compilar componentes React e servidor
+        run: npm run build
+      - name: Validar tipagem do aplicativo
+        run: npx tsc -p tsconfig.app.json
