@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/jarvis-publicar-261.yml
+      - .github/workflows/jarvis-publicar-262.yml
 permissions:
   contents: read
   actions: write
