@@ -1,0 +1,27 @@
+name: JARVIS wallet N click history validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-n-history-click.yml
+permissions:
+  contents: read
+jobs:
+  wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/n-wallet-history-click-and-minecraft-cleanup
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx tsx scripts/conferir-historico-moedas-clique.ts
+      - run: npm run test:moedas-n
+      - run: npx tsc -p tsconfig.app.json
+      - run: npm run build
