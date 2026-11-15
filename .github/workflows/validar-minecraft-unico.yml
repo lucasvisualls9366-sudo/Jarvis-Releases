@@ -1,0 +1,29 @@
+name: JARVIS single Minecraft Java validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-minecraft-unico.yml
+permissions:
+  contents: read
+jobs:
+  minecraft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: remove/minecraft-web-single-java-263
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run test:minecraft-separacao
+      - run: npx tsx scripts/conferir-historico-moedas-clique.ts
+      - run: npx tsx scripts/conferir-damas-online-263.ts
+      - run: npm run test:online-original
+      - run: npx tsc -p tsconfig.app.json
+      - run: npm run build
