@@ -1,4 +1,5 @@
 name: JARVIS multiplayer relay 262 - validar sem publicar
+# Validacao atualizada apos correcoes de tipagem
 on:
   push:
     branches: [main]
