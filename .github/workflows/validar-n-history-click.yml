@@ -25,6 +25,6 @@ jobs:
       - run: npx tsx scripts/conferir-damas-online-263.ts
       - run: npm run test:online-original
       - run: mkdir -p test-results
-      - run: npm run test:moedas-n
+      - run: npx tsx scripts/conferir-carteira-retorno-207.ts
       - run: npx tsc -p tsconfig.app.json
       - run: npm run build
