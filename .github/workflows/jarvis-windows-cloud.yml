@@ -362,7 +362,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $repo = 'lucasvisualls9366-sudo/Jarvis-Releases'
           $version = $env:JARVIS_RELEASE_VERSION
-          if ($version -notmatch '^\d+\.\d+\.\d+ { throw "Versao invalida para limpeza: $version" }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Versao invalida para limpeza: $version" }
           $ultima = gh api "repos/$repo/releases/latest" --jq .tag_name
           if ($LASTEXITCODE -ne 0 -or $ultima -ne "v$version") {
             Write-Warning "Release atual nao corresponde ao build; nenhuma exclusao."
