@@ -391,34 +391,3 @@ jobs:
             if ($restantes[$i] -ne $esperadas[$i]) { throw 'Releases finais divergem das esperadas.' }
           }
           Write-Host "OK: mantidas as cinco releases mais recentes, iniciando em v$version."
-
-) { throw "Versao invalida para limpeza: $version" }
-          $ultima = gh api "repos/$repo/releases/latest" --jq .tag_name
-          if ($LASTEXITCODE -ne 0 -or $ultima -ne "v$version") {
-            Write-Warning "Release atual nao corresponde ao build; nenhuma exclusao."
-            exit 0
-          }
-          $tags = @(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
-          if ($LASTEXITCODE -ne 0) { Write-Warning 'Consulta de releases falhou; nenhuma exclusao.'; exit 0 }
-          $versao = [version]$version
-          $esperadas = @(0..5 | ForEach-Object { "v$($versao.Major).$($versao.Minor).$($versao.Build - $_)" })
-          if ($tags.Count -ne 6) {
-            Write-Warning "A lista tem $($tags.Count) releases, nao seis; nenhuma exclusao."
-            exit 0
-          }
-          for ($i=0; $i -lt 6; $i++) {
-            if ($tags[$i] -ne $esperadas[$i]) {
-              Write-Warning "Lista diverge do esperado; nenhuma exclusao."
-              exit 0
-            }
-          }
-          $antiga = $esperadas[5]
-          gh release delete $antiga --repo $repo --cleanup-tag --yes
-          if ($LASTEXITCODE -ne 0) { throw "Falhou ao limpar $antiga apos verificar todas as versoes." }
-          $restantes = @(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
-          if ($LASTEXITCODE -ne 0 -or $restantes.Count -ne 5) { throw 'Quantidade final inesperada apos limpeza.' }
-          for ($i=0; $i -lt 5; $i++) {
-            if ($restantes[$i] -ne $esperadas[$i]) { throw 'Releases finais divergem das esperadas.' }
-          }
-          Write-Host "OK: mantidas as cinco releases mais recentes, iniciando em v$version."
-
