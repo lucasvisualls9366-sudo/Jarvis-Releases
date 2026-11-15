@@ -170,6 +170,8 @@ jobs:
           npm run test:jarvis-olho
           npm run test:jarvis-pro
           node scripts/conferir-zap-formato-resposta.mjs
+      - name: Validar histórico WhatsApp e auditoria abaixo dos dois painéis
+        run: npm run test:zap-historico-layout
       - name: Conferir tipagem sem bloquear o instalador
         continue-on-error: true
         run: npm run lint
@@ -359,24 +361,24 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $repo = 'lucasvisualls9366-sudo/Jarvis-Releases'
           $ultima = gh api "repos/$repo/releases/latest" --jq '.tag_name'
-          if ($LASTEXITCODE -ne 0 -or $ultima -ne 'v2.1.259') {
+          if ($LASTEXITCODE -ne 0 -or $ultima -ne 'v2.1.260') {
             throw "A release atual nao e v2.1.255; limpeza interrompida."
           }
           $tags = @(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
           if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel consultar as releases.' }
-          $esperadas = @('v2.1.259','v2.1.258','v2.1.257','v2.1.256','v2.1.255','v2.1.254')
+          $esperadas = @('v2.1.260','v2.1.259','v2.1.258','v2.1.257','v2.1.256','v2.1.255')
           if ($tags.Count -ne $esperadas.Count) { throw "Numero inesperado de releases ($($tags.Count)); nenhuma exclusao realizada." }
           for ($i=0; $i -lt $esperadas.Count; $i++) {
             if ($tags[$i] -ne $esperadas[$i]) {
               throw "Versao inesperada na posicao $i. Nenhuma exclusao realizada."
             }
           }
-          gh release delete 'v2.1.254' --repo $repo --cleanup-tag --yes
+          gh release delete 'v2.1.255' --repo $repo --cleanup-tag --yes
           if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel remover a release antiga 2.1.250.' }
           $restantes = @(gh api "repos/$repo/releases?per_page=100" --jq '.[].tag_name')
           if ($LASTEXITCODE -ne 0 -or $restantes.Count -ne 5) { throw 'A verificacao final das cinco releases falhou.' }
           for ($i=0; $i -lt 5; $i++) {
             if ($restantes[$i] -ne $esperadas[$i]) { throw 'A lista final de releases diverge do esperado.' }
           }
-          Write-Host 'OK: foram mantidas somente as cinco releases v2.1.259 a v2.1.255.'
+          Write-Host 'OK: foram mantidas somente as cinco releases v2.1.260 a v2.1.256.'
 
