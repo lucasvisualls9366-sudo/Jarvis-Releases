@@ -1,0 +1,54 @@
+name: JARVIS multiplayer relay 262 - validar sem publicar
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-multiplayer-relay-262.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  board-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/multiplayer-relay-board-262
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Validar fallback WebRTC com relay e RLS
+        run: npx tsx scripts/conferir-multiplayer-relay-262.ts
+      - name: Verificar jogo da velha, damas, xadrez, memoria e cartas
+        run: |
+          npm run test:online-original
+          npx tsx scripts/conferir-jogos-tabuleiro-online.ts
+          npm run test:games
+      - name: Verificar Minecraft independente
+        run: npm run test:minecraft-separacao
+      - name: TypeScript e compilacao
+        run: |
+          npx tsc -p tsconfig.app.json
+          npm run build
+  board-windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: fix/multiplayer-relay-board-262
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx tsx scripts/conferir-multiplayer-relay-262.ts
+      - run: npm run test:online-original
+      - run: npm run build
