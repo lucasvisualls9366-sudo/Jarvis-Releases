@@ -1,0 +1,48 @@
+name: Validar Minecraft Web e Horizon - STAGING sem publicar
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-minecraft-staging.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  minecraft-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar rascunho do JARVIS sem publicar release
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 0786dca885cbd659cf613543c65c0fc753633274
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias com tentativas
+        shell: bash
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          for attempt in 1 2 3 4; do
+            npm ci --fetch-retries=4 --fetch-retry-factor=2 --fetch-retry-mintimeout=2000 && exit 0
+            sleep 4
+          done
+          exit 1
+      - name: Testar Minecraft Web isolado do Horizon
+        run: npm run test:minecraft-separacao
+      - name: Regressão Minecraft 210
+        run: npx tsx scripts/conferir-minecraft-210.ts
+      - name: Primeiro acesso Horizon e fontes locais
+        run: npx tsx scripts/conferir-minecraft-primeiro-acesso-223.ts
+      - name: Validar downloads de outros jogos
+        run: npx tsx scripts/conferir-download-games.ts
+      - name: Verificar build JARVIS
+        run: npm run build
+      - name: Verificar TypeScript
+        run: npx tsc -p tsconfig.app.json
