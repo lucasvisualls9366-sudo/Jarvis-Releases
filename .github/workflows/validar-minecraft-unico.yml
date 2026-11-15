@@ -1,4 +1,5 @@
 name: JARVIS single Minecraft Java validation
+# Typing fix: removed legacy Web multiplayer union
 on:
   push:
     branches: [main]
