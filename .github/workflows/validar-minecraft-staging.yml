@@ -38,6 +38,8 @@ jobs:
         run: npm run test:minecraft-separacao
       - name: Testar os cinco jogos originais em multiplayer
         run: npm run test:online-original
+      - name: Regressões completas da vitrine e dos cinco jogos JARVIS
+        run: npm run test:games
       - name: Regressão Minecraft 210
         run: npx tsx scripts/conferir-minecraft-210.ts
       - name: Primeiro acesso Horizon e fontes locais
