@@ -1,4 +1,5 @@
 name: JARVIS 2.1.262 - solicitar publicacao oficial validada
+# Workflow Windows restaurado antes do envio
 on:
   push:
     branches: [main]
