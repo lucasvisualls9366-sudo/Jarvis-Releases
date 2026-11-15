@@ -1,4 +1,4 @@
-name: Validar Minecraft Web e Horizon - STAGING sem publicar
+name: Validar Minecraft e Jogos Originais Online - STAGING sem publicar
 on:
   push:
     branches: [main]
@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lukasvisualls-dev/Jarvis
-          ref: e2f0ffd63e944d8664b91ca500bb31c806c30401
+          ref: 260f86aaf7650ad992850d8c4f57f6a11bddb595
           token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -36,6 +36,8 @@ jobs:
           exit 1
       - name: Testar Minecraft Web isolado do Horizon
         run: npm run test:minecraft-separacao
+      - name: Testar os cinco jogos originais em multiplayer
+        run: npm run test:online-original
       - name: Regressão Minecraft 210
         run: npx tsx scripts/conferir-minecraft-210.ts
       - name: Primeiro acesso Horizon e fontes locais
