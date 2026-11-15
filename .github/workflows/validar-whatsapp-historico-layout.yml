@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lukasvisualls-dev/Jarvis
-          ref: b8f814ea5a78e2df90502a64f8fda9bb286a9fb8
+          ref: 984fe03300856d78eed4feca39db72dd034c0f3f
           token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -35,8 +35,12 @@ jobs:
             sleep 5
           done
           exit 1
-      - name: Validar posicao do feed, lista e conversa
-        run: npm run test:zap-historico-layout
+      - name: Conferir versao e posicao do feed, lista e conversa
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.260"
+          npm run test:zap-historico-layout
+          npm run test:zap-formato
+          npm run test:zap-gatilho
       - name: Compilar React
         run: npm run build
       - name: Validar TypeScript
