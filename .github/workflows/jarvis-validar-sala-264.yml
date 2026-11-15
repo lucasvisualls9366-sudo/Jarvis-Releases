@@ -1,0 +1,201 @@
+name: JARVIS 2.1.264 - validar Sala Virtual e instalador
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-validar-sala-264.yml
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: 'true'
+      source_sha: 'dd6f280ff73e4838b2933c858c4d9a1000663113'
+    steps:
+      - run: echo "Validando o commit da Sala Virtual"
+
+  validate:
+    needs: plan
+    if: ${{ needs.plan.outputs.should_build == 'true' }}
+    # Windows gratuito do GitHub; nao usa o PC.
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
+      VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION }}
+      VITE_JARVIS_LEGAL_PROVIDER_ADDRESS: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_ADDRESS }}
+      VITE_JARVIS_LEGAL_CONTACT: ${{ secrets.VITE_JARVIS_LEGAL_CONTACT }}
+    steps:
+      - name: Verificar token de leitura do JARVIS privado
+        shell: powershell
+        env:
+          JARVIS_SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:JARVIS_SOURCE_TOKEN)) {
+            throw 'Configure JARVIS_SOURCE_TOKEN (Contents: Read-only no repositorio antigo).'
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: ${{ needs.plan.outputs.source_sha }}
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Validar Sala Virtual
+        run: node scripts/conferir-sala-virtual.mjs
+      - name: Validar latencia, fila e motores de voz antes de publicar
+        run: |
+          npm run test:voz-latencia
+          npm run test:resposta-voz
+          npm run test:inicio-rapido
+          npm run test:elevenlabs
+          npm run test:voz-natural
+      - name: Validar Download YT por voz e arquivo final
+        run: npm run test:youtube-voz
+      - name: Preparar HEIC para testes Windows
+        shell: powershell
+        run: ./scripts/install-heic-codec.ps1
+      - name: Validar Black Neon e novo feed de atualizacoes
+        run: node scripts/conferir-black-neon-updater.mjs
+      - name: Conferir Supabase do build
+        run: node scripts/conferir-supabase-empacotamento.cjs
+      - name: Validar autenticacao Supabase sem compra
+        run: |
+          node scripts/conferir-auth-supabase.mjs
+          node scripts/conferir-auth-supabase-sdk.mjs
+          node scripts/conferir-acesso-jarvis.mjs
+      - name: Validar Conversor Arquivos integrado
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+          npx tsx scripts/conferir-conversor-voz.ts
+          node scripts/conferir-conversor-autorizacao.mjs
+
+      - name: Validar codigos curtos e integridade de convites
+        run: node scripts/conferir-codigos-convite-perfil-231.mjs
+      - name: Conferir jogos e administracao
+        run: |
+          npx tsc -p tsconfig.app.json
+          node scripts/conferir-admin-supabase.mjs
+          npx tsx scripts/conferir-jogos-tabuleiro-online.ts
+          npx tsx scripts/conferir-pc-atualizacoes.ts
+          npx tsx scripts/conferir-autoatualizacao.ts
+          npx tsx scripts/conferir-agenda-resumo.ts
+          npx tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck src/pcMaintenanceService.ts
+          npm run test:games
+          npm run test:navegador-interno
+          npm run test:youtube
+          npm run test:tiktok-assinatura
+          node --import tsx scripts/conferir-atualizacao-219.mjs
+          node scripts/conferir-remocao-lousa-220.mjs
+          npx tsx scripts/conferir-convites-221.ts
+          npx tsx scripts/conferir-bonus-n-222.ts
+          npx tsx scripts/conferir-minecraft-primeiro-acesso-223.ts
+          npm run test:jarvis-olho
+          npm run test:jarvis-pro
+          node scripts/conferir-zap-formato-resposta.mjs
+      - name: Validar histórico WhatsApp e auditoria abaixo dos dois painéis
+        run: npm run test:zap-historico-layout
+      - name: Conferir tipagem sem bloquear o instalador
+        continue-on-error: true
+        run: npm run lint
+      - name: Conferir build web sem bloquear o instalador
+        continue-on-error: true
+        run: npm run build
+
+  package-windows:
+    needs: [plan, validate]
+    if: ${{ needs.plan.outputs.should_build == 'true' }}
+    permissions:
+      contents: write
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
+      VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION }}
+      VITE_JARVIS_LEGAL_PROVIDER_ADDRESS: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_ADDRESS }}
+      VITE_JARVIS_LEGAL_CONTACT: ${{ secrets.VITE_JARVIS_LEGAL_CONTACT }}
+    steps:
+      - name: Verificar token de leitura do JARVIS privado
+        shell: powershell
+        env:
+          JARVIS_SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:JARVIS_SOURCE_TOKEN)) {
+            throw 'Configure JARVIS_SOURCE_TOKEN (Contents: Read-only no repositorio antigo).'
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: ${{ needs.plan.outputs.source_sha }}
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias com tolerancia a falhas temporarias
+        shell: powershell
+        run: |
+          $maxAttempts = 5
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "npm ci: tentativa $attempt de $maxAttempts"
+            npm ci
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Dependencias instaladas com sucesso."
+              break
+            }
+
+            if ($attempt -eq $maxAttempts) {
+              throw "npm ci falhou apos $maxAttempts tentativas. Ultimo codigo: $LASTEXITCODE"
+            }
+
+            $delay = 15 * $attempt
+            Write-Warning "Falha temporaria ao instalar dependencias. Nova tentativa em $delay segundos."
+            Start-Sleep -Seconds $delay
+          }
+
+      - name: Conferir seletor Win32 do Minecraft
+        run: node scripts/conferir-minecraft-win32-214.mjs
+
+      - name: Instalar codificador HEIC libheif no instalador Windows
+        shell: powershell
+        run: ./scripts/install-heic-codec.ps1
+
+      - name: Testar seletor e formatos do Conversor no Windows
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+          node scripts/conferir-conversor-autorizacao.mjs
+
+      - name: Compilar JARVIS
+        run: npm run build
+
+      # Jogos, incluindo Rhythia, são baixados do Games pela aba do aplicativo.
+
+      - name: Gerar instalador Windows
+        run: npx electron-builder --win --publish never
+
+      - name: Verificar codificador HEIC no instalador Windows
+        shell: powershell
+        run: |
+          $codec = 'dist-desktop/win-unpacked/resources/heif/heif.exe'
+          if (-not (Test-Path -LiteralPath $codec)) { throw 'Codificador HEIC ausente no instalador JARVIS.' }
+          & $codec '--unpin-program=heif-enc' '--list-encoders'
+          if ($LASTEXITCODE -ne 0) { throw 'Codificador HEIC não executa após empacotamento.' }
+
+      - name: Conferir dependencias do aplicativo empacotado
+        run: node scripts/conferir-runtime-empacotado.cjs
+
