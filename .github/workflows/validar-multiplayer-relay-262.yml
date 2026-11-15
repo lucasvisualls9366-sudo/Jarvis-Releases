@@ -1,5 +1,5 @@
 name: JARVIS multiplayer relay 262 - validar sem publicar
-# Validacao atualizada apos correcoes de tipagem e testes
+# Validacao final 2.1.262: correcoes de conexão, timeout e manifesto
 on:
   push:
     branches: [main]
