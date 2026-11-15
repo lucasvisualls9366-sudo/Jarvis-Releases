@@ -26,5 +26,6 @@ jobs:
       - run: npx tsx scripts/conferir-historico-moedas-clique.ts
       - run: npx tsx scripts/conferir-damas-online-263.ts
       - run: npm run test:online-original
+      - run: npm run test:games
       - run: npx tsc -p tsconfig.app.json
       - run: npm run build
