@@ -1,0 +1,43 @@
+name: Validar WhatsApp - Histórico e Feed abaixo
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validar-whatsapp-historico-layout.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar commit do PR 195 do JARVIS privado
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: b8f814ea5a78e2df90502a64f8fda9bb286a9fb8
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        shell: bash
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+        run: |
+          for attempt in 1 2 3 4; do
+            npm ci --fetch-retries=4 --fetch-retry-factor=2 --fetch-retry-mintimeout=2000 && exit 0
+            sleep 5
+          done
+          exit 1
+      - name: Validar posicao do feed, lista e conversa
+        run: npm run test:zap-historico-layout
+      - name: Compilar React
+        run: npm run build
+      - name: Validar TypeScript
+        run: npx tsc -p tsconfig.app.json
