@@ -1,0 +1,103 @@
+name: JARVIS 2.1.261 - validacao integral em runners publicos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-261-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Baixar JARVIS privado no commit de staging aprovado
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 230dc79c949b882bc49ca32aba46e7eacdcca3c1
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci --fetch-retries=4
+      - name: Minecraft Web e Horizon isolados
+        run: npm run test:minecraft-separacao
+      - name: Multiplayer cinco jogos nas interfaces originais
+        run: npm run test:online-original
+      - name: Regressao completa dos jogos
+        run: npm run test:games
+      - name: Autenticacao e convites
+        run: |
+          node scripts/conferir-auth-supabase.mjs
+          node scripts/conferir-auth-supabase-sdk.mjs
+          node scripts/conferir-acesso-jarvis.mjs
+          npx tsx scripts/conferir-jogos-tabuleiro-online.ts
+          node scripts/conferir-codigos-convite-perfil-231.mjs
+      - name: Voz e navegador
+        run: |
+          npm run test:voz-latencia
+          npm run test:resposta-voz
+          npm run test:inicio-rapido
+          npm run test:elevenlabs
+          npm run test:voz-natural
+          npm run test:navegador-interno
+          npm run test:youtube
+          npm run test:youtube-voz
+      - name: Conversor de arquivos
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+          npx tsx scripts/conferir-conversor-voz.ts
+          node scripts/conferir-conversor-autorizacao.mjs
+      - name: Holograma e historico
+        run: |
+          npm run test:holograma-256
+          npm run test:holograma-257
+          npm run test:holograma-258
+          npm run test:holograma-259
+          npm run test:zap-historico-layout
+      - name: TypeScript e compilacao
+        run: |
+          npx tsc -p tsconfig.app.json
+          npm run build
+
+  conversion-windows:
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - name: Baixar JARVIS privado no commit de staging aprovado
+        uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: 230dc79c949b882bc49ca32aba46e7eacdcca3c1
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci --fetch-retries=4
+      - name: Preparar HEIC
+        shell: powershell
+        run: ./scripts/install-heic-codec.ps1
+      - name: Conversor real Windows
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+      - name: Testar Minecraft e jogos
+        run: |
+          npm run test:minecraft-separacao
+          npm run test:online-original
+      - name: Build Windows
+        run: npm run build
