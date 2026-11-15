@@ -51,11 +51,9 @@ jobs:
           npm run test:navegador-interno
           npm run test:youtube
           npm run test:youtube-voz
-      - name: Conversor de arquivos
+      - name: Conversor de arquivos (Linux, sem HEIC Windows)
         run: |
           node --test electron/dragshiftWorkspace.test.js
-          node --test electron/dragshiftFormats.test.js
-          node scripts/conferir-dragshift-integrado.mjs
           npx tsx scripts/conferir-conversor-voz.ts
           node scripts/conferir-conversor-autorizacao.mjs
       - name: Holograma e historico
