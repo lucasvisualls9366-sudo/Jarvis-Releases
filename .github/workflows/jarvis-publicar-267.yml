@@ -19,7 +19,7 @@ jobs:
     outputs:
       should_build: ${{ steps.version.outputs.build }}
       should_publish: ${{ steps.version.outputs.build }}
-      source_sha: 'f331f103219a6bd59e17b4df6b12105844699036'
+      source_sha: '35fa6218f25353d1b15265c6ab33f9d371588c1b'
       version: '2.1.267'
     steps:
       - name: Conferir versão disponível
