@@ -1,0 +1,365 @@
+name: JARVIS 2.1.268 - Amigo 2 aprovado, chamadas e grupos corrigidos
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/jarvis-publicar-268.yml
+
+concurrency:
+  group: jarvis-public-cloud-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.version.outputs.build }}
+      should_publish: ${{ steps.version.outputs.build }}
+      source_sha: 'c3ab3e8cc48b0881aba94c66fbd53cdb13e3205b'
+      version: '2.1.268'
+    steps:
+      - name: Conferir versão disponível
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          if [[ "$latest" == "v2.1.268" ]]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$latest" == "v2.1.267" ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Release atual inesperada: $latest"
+            exit 1
+          fi
+
+  validate:
+    needs: plan
+    if: ${{ needs.plan.outputs.should_build == 'true' }}
+    # Windows gratuito do GitHub; nao usa o PC.
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 90
+    env:
+      VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
+      VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION }}
+      VITE_JARVIS_LEGAL_PROVIDER_ADDRESS: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_ADDRESS }}
+      VITE_JARVIS_LEGAL_CONTACT: ${{ secrets.VITE_JARVIS_LEGAL_CONTACT }}
+    steps:
+      - name: Verificar token de leitura do JARVIS privado
+        shell: powershell
+        env:
+          JARVIS_SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:JARVIS_SOURCE_TOKEN)) {
+            throw 'Configure JARVIS_SOURCE_TOKEN (Contents: Read-only no repositorio antigo).'
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: ${{ needs.plan.outputs.source_sha }}
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Validar Amigo 2 e atualização manual
+        run: |
+          node scripts/conferir-amigos.mjs
+          node scripts/conferir-amigos-grupo-10.mjs
+          node --import tsx scripts/conferir-qualidade-chamada.ts
+          node --import tsx scripts/conferir-autoatualizacao.ts
+      - name: Compilar e conferir tipagem da aplicação
+        run: |
+          npx tsc -p tsconfig.app.json
+          npm run build
+      - name: Instalar Chromium isolado para testes de chamadas
+        run: npx playwright install chromium
+      - name: Validar recuperação de candidatos ICE e reentrada em grupo
+        run: |
+          node scripts/conferir-documentos-realtime.mjs
+          node scripts/conferir-grupo-reentrada.mjs
+      - name: Testar chamada real do módulo Amigos
+        run: node scripts/conferir-amigos-fluxo.mjs
+      - name: Testar Amigo 2 com duas sessões WebRTC, áudio, tela e configurações
+        env:
+          JARVIS_TEST_AMIGO2: '1'
+        run: node scripts/conferir-amigos-fluxo.mjs
+      - name: Validar microfone ausente e controles da janela
+        run: |
+          node --import tsx scripts/conferir-amigo2-microfone.ts
+          node scripts/conferir-controle-janela.mjs
+      - name: Testar chamada sem microfone nas duas pontas
+        env:
+          JARVIS_TEST_AMIGO2: '1'
+          JARVIS_TEST_NO_MIC: '1'
+        run: node scripts/conferir-amigos-fluxo.mjs
+      - name: Testar conexão e presença em grupo com reentrada
+        env:
+          JARVIS_TEST_AMIGO2: '1'
+          JARVIS_TEST_GROUP: '1'
+        run: node scripts/conferir-amigos-fluxo.mjs
+      - name: Testar grupo sem microfone
+        env:
+          JARVIS_TEST_AMIGO2: '1'
+          JARVIS_TEST_GROUP: '1'
+          JARVIS_TEST_NO_MIC: '1'
+        run: node scripts/conferir-amigos-fluxo.mjs
+      - name: Testar janela de transmissão e atualizações manuais
+        run: |
+          node scripts/conferir-amigos-midia.mjs
+          node scripts/conferir-autoatualizacao-interface.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: amigo2-268-validation
+          path: test-results/friends
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Validar Sala Virtual
+        run: node scripts/conferir-sala-virtual.mjs
+      - name: Validar latencia, fila e motores de voz antes de publicar
+        run: |
+          npm run test:voz-latencia
+          npm run test:resposta-voz
+          npm run test:inicio-rapido
+          npm run test:elevenlabs
+          npm run test:voz-natural
+      - name: Validar Download YT por voz e arquivo final
+        run: npm run test:youtube-voz
+      - name: Preparar HEIC para testes Windows
+        shell: powershell
+        run: ./scripts/install-heic-codec.ps1
+      - name: Validar Black Neon e novo feed de atualizacoes
+        run: node scripts/conferir-black-neon-updater.mjs
+      - name: Conferir Supabase do build
+        run: node scripts/conferir-supabase-empacotamento.cjs
+      - name: Validar autenticacao Supabase sem compra
+        run: |
+          node scripts/conferir-auth-supabase.mjs
+          node scripts/conferir-auth-supabase-sdk.mjs
+          node scripts/conferir-acesso-jarvis.mjs
+      - name: Validar Conversor Arquivos integrado
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+          npx tsx scripts/conferir-conversor-voz.ts
+          node scripts/conferir-conversor-autorizacao.mjs
+
+      - name: Validar codigos curtos e integridade de convites
+        run: node scripts/conferir-codigos-convite-perfil-231.mjs
+      - name: Conferir jogos e administracao
+        run: |
+          npx tsc -p tsconfig.app.json
+          node scripts/conferir-admin-supabase.mjs
+          npx tsx scripts/conferir-jogos-tabuleiro-online.ts
+          npx tsx scripts/conferir-pc-atualizacoes.ts
+          npx tsx scripts/conferir-autoatualizacao.ts
+          npx tsx scripts/conferir-agenda-resumo.ts
+          npx tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck src/pcMaintenanceService.ts
+          npm run test:games
+          npm run test:navegador-interno
+          npm run test:youtube
+          npm run test:tiktok-assinatura
+          node --import tsx scripts/conferir-atualizacao-219.mjs
+          node scripts/conferir-remocao-lousa-220.mjs
+          npx tsx scripts/conferir-convites-221.ts
+          npx tsx scripts/conferir-bonus-n-222.ts
+          npx tsx scripts/conferir-minecraft-primeiro-acesso-223.ts
+          npm run test:jarvis-olho
+          npm run test:jarvis-pro
+          node scripts/conferir-zap-formato-resposta.mjs
+      - name: Validar histórico WhatsApp e auditoria abaixo dos dois painéis
+        run: npm run test:zap-historico-layout
+      - name: Conferir tipagem sem bloquear o instalador
+        continue-on-error: true
+        run: npm run lint
+      - name: Conferir build web sem bloquear o instalador
+        continue-on-error: true
+        run: npm run build
+
+  package-windows:
+    needs: [plan, validate]
+    if: ${{ needs.plan.outputs.should_build == 'true' }}
+    permissions:
+      contents: write
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 90
+    env:
+      VITE_JARVIS_LEGAL_PROVIDER_NAME: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_NAME }}
+      VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION }}
+      VITE_JARVIS_LEGAL_PROVIDER_ADDRESS: ${{ secrets.VITE_JARVIS_LEGAL_PROVIDER_ADDRESS }}
+      VITE_JARVIS_LEGAL_CONTACT: ${{ secrets.VITE_JARVIS_LEGAL_CONTACT }}
+    steps:
+      - name: Verificar token de leitura do JARVIS privado
+        shell: powershell
+        env:
+          JARVIS_SOURCE_TOKEN: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:JARVIS_SOURCE_TOKEN)) {
+            throw 'Configure JARVIS_SOURCE_TOKEN (Contents: Read-only no repositorio antigo).'
+          }
+
+      - uses: actions/checkout@v4
+        with:
+          repository: lukasvisualls-dev/Jarvis
+          ref: ${{ needs.plan.outputs.source_sha }}
+          token: ${{ secrets.JARVIS_SOURCE_TOKEN }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias com tolerancia a falhas temporarias
+        shell: powershell
+        run: |
+          $maxAttempts = 5
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "npm ci: tentativa $attempt de $maxAttempts"
+            npm ci
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Dependencias instaladas com sucesso."
+              break
+            }
+
+            if ($attempt -eq $maxAttempts) {
+              throw "npm ci falhou apos $maxAttempts tentativas. Ultimo codigo: $LASTEXITCODE"
+            }
+
+            $delay = 15 * $attempt
+            Write-Warning "Falha temporaria ao instalar dependencias. Nova tentativa em $delay segundos."
+            Start-Sleep -Seconds $delay
+          }
+
+      - name: Conferir seletor Win32 do Minecraft
+        run: node scripts/conferir-minecraft-win32-214.mjs
+
+      - name: Instalar codificador HEIC libheif no instalador Windows
+        shell: powershell
+        run: ./scripts/install-heic-codec.ps1
+
+      - name: Testar seletor e formatos do Conversor no Windows
+        run: |
+          node --test electron/dragshiftWorkspace.test.js
+          node --test electron/dragshiftFormats.test.js
+          node scripts/conferir-dragshift-integrado.mjs
+          node scripts/conferir-conversor-autorizacao.mjs
+
+      - name: Compilar JARVIS
+        run: npm run build
+
+      # Jogos, incluindo Rhythia, são baixados do Games pela aba do aplicativo.
+
+      - name: Gerar instalador Windows
+        run: npx electron-builder --win --publish never
+
+      - name: Verificar codificador HEIC no instalador Windows
+        shell: powershell
+        run: |
+          $codec = 'dist-desktop/win-unpacked/resources/heif/heif.exe'
+          if (-not (Test-Path -LiteralPath $codec)) { throw 'Codificador HEIC ausente no instalador JARVIS.' }
+          & $codec '--unpin-program=heif-enc' '--list-encoders'
+          if ($LASTEXITCODE -ne 0) { throw 'Codificador HEIC não executa após empacotamento.' }
+
+      - name: Conferir dependencias do aplicativo empacotado
+        run: node scripts/conferir-runtime-empacotado.cjs
+
+      - name: Bloquear publicacao sem dados legais obrigatorios
+        if: ${{ needs.plan.outputs.should_publish == 'true' }}
+        shell: powershell
+        run: |
+          foreach ($nome in @(
+            'VITE_JARVIS_LEGAL_PROVIDER_NAME',
+            'VITE_JARVIS_LEGAL_PROVIDER_REGISTRATION',
+            'VITE_JARVIS_LEGAL_PROVIDER_ADDRESS',
+            'VITE_JARVIS_LEGAL_CONTACT'
+          )) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($nome))) {
+              throw "Falta segredo legal $nome em Jarvis-Releases. Publicacao bloqueada."
+            }
+          }
+
+      # Publicar primeiro como rascunho: somente disponibilizar aos usuarios
+      # depois que os tres arquivos estiverem presentes e verificados.
+      - name: Publicar instalador verificado no novo GitHub
+        if: ${{ needs.plan.outputs.should_publish == 'true' }}
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+            throw "GITHUB_TOKEN indisponivel. Release nao publicada."
+          }
+
+          $version = (node -p "require('./package.json').version").Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Versao invalida no package.json."
+          }
+          $tag = "v$version"
+          $repo = "lucasvisualls9366-sudo/Jarvis-Releases"
+          $exe = "dist-desktop/JARVIS-Setup-$version.exe"
+          $blockmap = "$exe.blockmap"
+          $latest = "dist-desktop/latest.yml"
+          $notes = "release-trigger/$version.md"
+
+          foreach ($file in @($exe, $blockmap, $latest, $notes)) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Arquivo da release ausente: $file"
+            }
+          }
+          if ((Get-Item $exe).Length -lt 50000000) {
+            throw "Instalador muito pequeno: interrompendo publicacao."
+          }
+          if ((Get-Content $latest -Raw) -notmatch ("version:\s*" + [regex]::Escape($version))) {
+            throw "latest.yml nao corresponde a $version."
+          }
+
+          # Listar releases retorna HTTP 200 inclusive quando a nova tag nao existe.
+          # Evita que o erro esperado "release not found" interrompa o Windows PowerShell 5.1.
+          $releasesJson = gh api "repos/$repo/releases?per_page=100"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Nao foi possivel consultar as releases no repositorio de destino."
+          }
+          $releases = @($releasesJson | ConvertFrom-Json)
+          if ($releases | Where-Object { $_.tag_name -eq $tag }) {
+            throw "A release $tag ja existe. Nao substituirei os arquivos automaticamente."
+          }
+          $previous = gh api "repos/$repo/releases/latest" --jq .tag_name
+          if ($LASTEXITCODE -eq 0 -and $previous -match '^v?\d+\.\d+\.\d+$') {
+            if ([version]$version -le [version]($previous -replace '^v','')) {
+              throw "A nova versao precisa ser maior que a ultima release ($previous)."
+            }
+          }
+
+          gh release create $tag $exe $blockmap $latest --repo $repo --title "JARVIS $version" --notes-file $notes --draft
+          if ($LASTEXITCODE -ne 0) { throw "Falha no envio da release em rascunho." }
+
+          $uploaded = gh release view $tag --repo $repo --json assets
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao consultar assets no novo GitHub." }
+          $assets = ($uploaded | ConvertFrom-Json).assets
+          foreach ($name in @("JARVIS-Setup-$version.exe", "JARVIS-Setup-$version.exe.blockmap", "latest.yml")) {
+            $asset = $assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
+            if (-not $asset -or $asset.size -le 0) { throw "Arquivo ausente/invalido: $name. Rascunho preservado." }
+          }
+
+          gh release edit $tag --repo $repo --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao ativar a release; confira o rascunho." }
+          $published = gh api "repos/$repo/releases/latest" --jq .tag_name
+          if ($LASTEXITCODE -ne 0 -or $published -ne $tag) {
+            throw "Release enviada, mas ultima versao nao confirmada."
+          }
+          Write-Host "JARVIS $version PUBLICADO COM SUCESSO: $repo" -ForegroundColor Green
